@@ -124,8 +124,8 @@ optical phase shifter, that can be controlled electronically.
                                 (mz.p.Control, phi.p.Control)]]
     mz
 
-![Exported SVG schematic](test.svg)
-<a href='https://rawgithub.com/ntezak/cirq/test.svg' target='_blank'>test.svg</a><br>
+![Exported SVG schematic](mz.png)
+<a href='https://rawgithub.com/ntezak/cirq/test.svg' target='_blank'>mz.svg</a><br>
 
 
 ## Change the circuit via an extended UI
