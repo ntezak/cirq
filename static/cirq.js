@@ -274,6 +274,8 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
             if (this.model.hasChanged("_r")
                     || this.model.hasChanged("_inner_color")
                     || this.model.hasChanged("_label_color")
+                    || this.model.hasChanged("_x_label")
+                    || this.model.hasChanged("_y_label")
                     || this.model.hasChanged("name")
                     || this.svg_inner.html() === ""
                     || this.model.hasChanged("_inner_svg")) {
