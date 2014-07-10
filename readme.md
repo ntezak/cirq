@@ -38,7 +38,7 @@ Check out (download to see actual circuits)
 
 - [Demo.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/Demo.ipynb) to see how to use cirq
 - [Ahkab.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/Ahkab.ipynb) to see how to interface cirq with [Ahkab](https://github.com/ahkab/ahkab)
-- [QNET.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/Demo.ipynb) to see how to interface cirq with [QNET](http://mabuchilab.github.io/QNET)
+- [QNET.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/QNET.ipynb) to see how to interface cirq with [QNET](http://mabuchilab.github.io/QNET)
 
 
 This file is actually based on the first one of these.
