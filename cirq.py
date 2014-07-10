@@ -62,6 +62,14 @@ class Domain(DOMWidget):
     causal = Bool(False, sync=True)
     one2one = Bool(False, sync=True)
 
+    # def __init__(self, name, causal, one2one=False, **kw):
+    #     super(Domain, self).__init__(**kw)
+    #     self.name = name
+    #     self.causal = causal
+    #     self.one2one = one2one
+    #     if not causal and one2one:
+    #         raise ValueError("Only non-causal links can be one to one.")
+
     _color = Unicode("#3366AA", sync=True)
     _color_selected = Unicode("red", sync=True)
     _color_target = Unicode("green", sync=True)
@@ -189,7 +197,19 @@ class Port(DOMWidget):
     and where the label should be placed.
     """
 
+
+
     _view_name = Unicode("SVGPortView", sync=True)
+
+    # def __init__(self, name, domain, direction="inout", **kw):
+    #     super(Port, self).__init__(**kw)
+    #     if domain.causal and direction not in ("in", "out"):
+    #         raise ValueError("Causal domains can only have input and output ports.")
+    #     self.name = name
+    #     self.domain = domain
+    #     self.direction = direction
+
+
 
     name = Unicode("n", sync=True)
     domain = Instance(klass=Domain, sync=True, doc="Associated domain, e.g., electrical contact, etc.")
@@ -238,6 +258,7 @@ class Port(DOMWidget):
 
 
 
+
 class ComponentType(HasPorts, DOMWidget):
     """
     Declares a component interface, including its port specification,
@@ -249,6 +270,7 @@ class ComponentType(HasPorts, DOMWidget):
 
     """
     name = Unicode("ct", sync=True)
+
 
     _inner_svg = Unicode("")
     _x_label = Float(0.)
@@ -287,7 +309,7 @@ class ComponentType(HasPorts, DOMWidget):
         return ComponentInstance(
             name=name,
             ctype=self,
-            ports=clone_ports(self.ports),
+            ports= clone_ports(self.ports),
             **default_options
         )
 
@@ -315,6 +337,8 @@ class ComponentInstance(HasPorts, DOMWidget):
     _label_color = Unicode("white", sync=True)
 
     def __repr__(self):
+        if self._circuit:
+            return repr(self._circuit) + ".c." + self.name
         return self.name
 
     # def __init__(self, *args, **kwargs):
@@ -328,6 +352,12 @@ class Connection(DOMWidget):
     """
     Class representing a single connection between two ports.
     """
+
+    # def __init__(self, source, target, **kw):
+    #     super(Connection, self).__init__(self, **kw)
+    #     self.source = source
+    #     self.target = target
+
     _view_name = Unicode("SVGConnectionView", sync=True)
 
     source = Instance(klass=Port, sync=True)
@@ -357,7 +387,7 @@ class Connection(DOMWidget):
         self.target.connections_in = remove_self(self.target.connections_in)
 
     def __repr__(self):
-        return "Connection({!r}, {!r})".format(self.source, self.target)
+        return "Connection(source={!r}, target={!r})".format(self.source, self.target)
 
 
 class Circuit(ComponentType):
@@ -596,12 +626,17 @@ class CircuitBuilder(PopupWidget):
 
     def _domains_changed(self, name, old, new):
         self.add_port_domain.values = {d.name: d.name for d in new}
+        self.add_port_domain.value_name = new[0].name
         self._domains_by_name = {d.name: d for d in new}
+        self._update_port_directions()
 
     def __init__(self, domains, components, circuit=None, **kwargs):
         super(CircuitBuilder, self).__init__(**kwargs)
         self.button_text = "Launch CircuitBuilder"
         self.description = circuit.name
+
+        def _resize_inputs(el):
+            el.set_css({"width": "100px"})
 
 
         #####  make controls
@@ -616,6 +651,8 @@ class CircuitBuilder(PopupWidget):
         self.reset_view_btn.on_click(self.reset_view)
 
         self.circname = TextWidget(description="Circuit name", value=circuit.name)
+        self.circname.on_displayed(_resize_inputs)
+
         self.rename_circ_btn = ButtonWidget(description="Rename")
         self.rename_circ_btn.on_click(self.rename_circuit)
         self.add_port_btn = ButtonWidget(description="New Port")
@@ -634,8 +671,10 @@ class CircuitBuilder(PopupWidget):
         ]
 
         # 2) add component
-        self.add_comp_name = TextWidget(description="Component name")
         self.add_comp_type = DropdownWidget(description="ComponentType")
+        self.add_comp_name = TextWidget(description="Component name")
+        self.add_comp_name.on_displayed(_resize_inputs)
+
         self.add_comp_add = ButtonWidget(description="Add Component")
         self.add_comp_add.on_click(self.add_component)
 
@@ -643,14 +682,16 @@ class CircuitBuilder(PopupWidget):
         self.add_comp_back.on_click(self.back)
 
         self.add_component_controls.children = [
-            self.add_comp_name,
             self.add_comp_type,
+            self.add_comp_name,
             self.add_comp_add,
             self.add_comp_back,
         ]
 
         # 3) add port
         self.add_port_name = TextWidget(description="Port name")
+        self.add_port_name.on_displayed(_resize_inputs)
+
         self.add_port_domain = DropdownWidget(description="Domain")
         self.add_port_domain.on_trait_change(self._update_port_directions, "value_name")
         self.add_port_direction = DropdownWidget(description="Direction",
@@ -670,6 +711,7 @@ class CircuitBuilder(PopupWidget):
 
         # 4) change component
         self.mod_comp_name = TextWidget(description="Component name")
+        self.mod_comp_name.on_displayed(_resize_inputs)
         self.mod_comp_rename = ButtonWidget(description="Rename")
         self.mod_comp_rename.on_click(self.rename_component)
         self.mod_comp_delete = ButtonWidget(description="Delete")
@@ -686,6 +728,7 @@ class CircuitBuilder(PopupWidget):
 
         # 5) change port
         self.mod_port_name = TextWidget(description="Port name")
+        self.mod_port_name.on_displayed(_resize_inputs)
         self.mod_port_rename = ButtonWidget(description="Rename")
         self.mod_port_rename.on_click(self.rename_port)
         self.mod_port_dec = ButtonWidget(description="<")
