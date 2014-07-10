@@ -23,6 +23,7 @@ environments that can be tightly
 integrated with custom, domain-specific implementation simulation or
 analysis backends as well as [IPython](http://ipython.org).
 
+
 An in-browser visual circuit editor leads to a rich integrated simulation and
 analysis workflow
 in which an engineer or researcher can receive very fast feedback when making
@@ -30,6 +31,18 @@ changes to his model.
 As a consequence, it is much easier to build intuition for the particular kinds
 of circuit models
 and find novel and creative solutions to an engineering task.
+
+## Example notebooks
+
+Check out (download to see actual circuits)
+
+- [Demo.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/Demo.ipynb) to see how to use cirq
+- [Ahkab.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/Ahkab.ipynb) to see how to interface cirq with [Ahkab](https://github.com/ahkab/ahkab)
+- [QNET.ipynb](http://nbviewer.ipython.org/github/ntezak/cirq/blob/master/QNET.ipynb) to see how to interface cirq with [QNET](http://mabuchilab.github.io/QNET)
+
+
+This file is actually based on the first one of these.
+
 
 
     import cirq; reload(cirq); cirq.init_js() # for debugging
