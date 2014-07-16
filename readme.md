@@ -1,5 +1,5 @@
 
-# Visually editing circuits with `cirq`
+Visually editing circuits with `cirq`
 
 `Cirq` is a package for creating and editing circuits of arbitrary domain.
 The very simple data structure allows for interfacing with further modeling and
@@ -32,6 +32,7 @@ As a consequence, it is much easier to build intuition for the particular kinds
 of circuit models
 and find novel and creative solutions to an engineering task.
 
+
 ## Example notebooks
 
 Check out (download to see actual circuits)
@@ -44,13 +45,17 @@ Check out (download to see actual circuits)
 This file is actually based on the first one of these.
 
 
-
-    import cirq; reload(cirq); cirq.init_js() # for debugging
+    import cirq; reload(cirq);
     from cirq import *
+    init_js()
 
 
-    <IPython.core.display.Javascript at 0x10ab6a2d0>
+    <IPython.core.display.Javascript at 0x108f0af90>
 
+
+
+    import cirq.tests; reload(cirq.tests);
+    cirq.tests.test_mach_zehnder()
 
 ## Specifying the domain
 
@@ -105,15 +110,6 @@ optical phase shifter, that can be controlled electronically.
 
     BS = ComponentType(name="Beamsplitter", ports=clone_ports(Inputs[:2]+Outputs[:2]))
     Phase = ComponentType(name="Phase", ports=clone_ports(Inputs[:1]+[el_port]+Outputs[:1]))
-    BS, Phase
-
-
-
-
-    (ComponentType(name=Beamsplitter, ports=[Beamsplitter.p.In1, Beamsplitter.p.In2, Beamsplitter.p.Out1, Beamsplitter.p.Out2], params=[]),
-     ComponentType(name=Phase, ports=[Phase.p.In1, Phase.p.Control, Phase.p.Out1], params=[]))
-
-
 
 ## Component instances and our circuit, a Mach-Zehnder interferometer
 
@@ -137,9 +133,14 @@ optical phase shifter, that can be controlled electronically.
                                 (mz.p.Control, phi.p.Control)]]
     mz
 
-![Exported SVG schematic](mz.png)
-<a href='https://rawgithub.com/ntezak/cirq/mz.svg' target='_blank'>mz.svg</a><br>
+## It's possible to tweak individual visualization parameters of a circuit element dynamically
 
+
+    from IPython.html.widgets import interact
+    @interact(r=(20,200))
+    def resize_b1(r=ComponentInstance._r.default_value):
+        b1._r = r
+        b1.layout_ports(b1.ports)
 
 ## Change the circuit via an extended UI
 
@@ -150,13 +151,119 @@ optical phase shifter, that can be controlled electronically.
 ## Export a figure of your circuit
 
 
-    cb.circuit.save_svg("test")
-
-## Re-Build circuit from scratch
+    from IPython.display import Image, FileLink, SVG
 
 
-    cb = CircuitBuilder([fm, el], [BS, Phase], Circuit(name="Mach-Zehnder-from-scratch"))
-    cb
+    cb.circuit.capture_svg()
 
 
-    
+    cb.circuit.save_last_image("mach_zehnder.svg")
+    cb.circuit.save_last_image("mach_zehnder.png")
+    cb.circuit.save_last_image("mach_zehnder.pdf")
+
+
+<a href='mach_zehnder.svg' target='_blank'>mach_zehnder.svg</a><br>
+
+
+
+<a href='mach_zehnder.png' target='_blank'>mach_zehnder.png</a><br>
+
+
+
+<a href='mach_zehnder.pdf' target='_blank'>mach_zehnder.pdf</a><br>
+
+
+
+    # this needs to run in another cell, because the above method writes the SVG file asynchronously
+    display(SVG(filename="mach_zehnder.svg"),
+    Image(filename="mach_zehnder.png"),
+    FileLink("mach_zehnder.pdf"))
+
+
+![svg](Demo_files/Demo_21_0.svg)
+
+
+
+![png](Demo_files/Demo_21_1.png)
+
+
+
+<a href='mach_zehnder.pdf' target='_blank'>mach_zehnder.pdf</a><br>
+
+
+## Serialize a circuit to JSON
+
+
+    mz.to_jsonifiable()
+
+
+
+
+    {'component_instances': {u'b1': u'Beamsplitter',
+      u'b2': u'Beamsplitter',
+      u'phi': u'Phase'},
+     'component_types': {u'Beamsplitter': {'ports': [{'direction': 'in',
+         'domain': u'fieldmode',
+         'name': u'In1'},
+        {'direction': 'in', 'domain': u'fieldmode', 'name': u'In2'},
+        {'direction': 'out', 'domain': u'fieldmode', 'name': u'Out1'},
+        {'direction': 'out', 'domain': u'fieldmode', 'name': u'Out2'}]},
+      u'Phase': {'ports': [{'direction': 'in',
+         'domain': u'fieldmode',
+         'name': u'In1'},
+        {'direction': 'inout', 'domain': u'electrical', 'name': u'Control'},
+        {'direction': 'out', 'domain': u'fieldmode', 'name': u'Out1'}]}},
+     'connections': [(u'MachZehnder', u'In1', u'b1', u'In1'),
+      (u'MachZehnder', u'In2', u'b1', u'In2'),
+      (u'b1', u'Out1', u'phi', u'In1'),
+      (u'b1', u'Out2', u'b2', u'In1'),
+      (u'phi', u'Out1', u'b2', u'In2'),
+      (u'b2', u'Out1', u'MachZehnder', u'Out1'),
+      (u'b2', u'Out2', u'MachZehnder', u'Out2'),
+      (u'MachZehnder', u'Control', u'phi', u'Control')],
+     'domains': {u'electrical': {'causal': False, 'one2one': False},
+      u'fieldmode': {'causal': True, 'one2one': True}},
+     'name': u'MachZehnder',
+     'ports': [{'direction': 'in', 'domain': u'fieldmode', 'name': u'In1'},
+      {'direction': 'in', 'domain': u'fieldmode', 'name': u'In2'},
+      {'direction': 'inout', 'domain': u'electrical', 'name': u'Control'},
+      {'direction': 'out', 'domain': u'fieldmode', 'name': u'Out1'},
+      {'direction': 'out', 'domain': u'fieldmode', 'name': u'Out2'}]}
+
+
+
+### And read it back in from JSON
+
+
+    mz2 = Circuit.from_jsonifiable(mz.to_jsonifiable())
+
+
+    mz2
+
+## Find all nets/cliques of connected ports
+
+
+    mz.get_nets(fm)
+
+
+
+
+    [[MachZehnder.p.In1, b1.p.In1],
+     [MachZehnder.p.In2, b1.p.In2],
+     [MachZehnder.p.Out1, b2.p.Out1],
+     [MachZehnder.p.Out2, b2.p.Out2],
+     [b1.p.Out1, phi.p.In1],
+     [b1.p.Out2, b2.p.In1],
+     [b2.p.In2, phi.p.Out1]]
+
+
+
+
+    mz.get_nets(el)
+
+
+
+
+    [[MachZehnder.p.Control, phi.p.Control]]
+
+

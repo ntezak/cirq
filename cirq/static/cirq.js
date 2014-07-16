@@ -1,5 +1,18 @@
+/** ---------------------------------------------------------------------------
+ Copyright (c) 2014, Nikolas Tezak <Nikolas.Tezak@gmail.com>
+
+ Distributed under the terms of the Modified BSD License.
+
+ The full license is in the file LICENSE.txt, distributed with this software.
+ ----------------------------------------------------------------------------- */
 
 
+
+// Add helper methods for String manipulation
+
+
+// Allows simplified version of Python's str.format
+// http://stackoverflow.com/questions/610406/javascript-equivalent-to-printf-string-format
 if (!String.format) {
     String.format = function (format) {
         var args = Array.prototype.slice.call(arguments, 1);
@@ -9,6 +22,8 @@ if (!String.format) {
     };
 }
 
+// Port of Python's str.endswith
+// http://stackoverflow.com/questions/280634/endswith-in-javascript
 if (typeof String.endsWith !== 'function') {
     String.endsWith = function (str, suffix) {
         return str.indexOf(suffix, str.length - suffix.length) !== -1;
@@ -19,10 +34,20 @@ console.log("[loading cirq.js]");
 
 require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widget"], function (d3, WidgetManager) {
 
+    // Query whether a particular circuit element is currently the selected one
+    // Will change when multi-selections become possible
     var selectedq = function (model) {
-        if (model === null || model.get("_circuit") === null) return false;
+        if (model === null || model.get("_circuit") === null) {
+            return false;
+        }
         return (model === model.get("_circuit").get("selected_element"));
     };
+
+    // Abstract class for svg-views to inherit from
+    // code taken from IPython's ContainerView widget
+    // and modified
+    // Copyright (c) IPython Development Team.
+    // Distributed under the terms of the Modified BSD License.
 
     var ContainerView = IPython.DOMWidgetView.extend({
 
@@ -53,6 +78,8 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
 
     });
 
+    // View of a single Port (of either the whole circuit or a component)
+    //noinspection JSLint
     var SVGPortView = IPython.DOMWidgetView.extend({
         render: function () {
             var el = document.createElementNS('http://www.w3.org/2000/svg', 'g'),
@@ -74,6 +101,7 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
             if (circuit !== null) {
                 this.listenTo(this.model.get("_circuit"), "change:selected_element", $.proxy(this.update_selected, this));
             } else {
+                //noinspection JSLint
                 this.model.on("change:_circuit", function (model, value) {
                     if (value) {
                         this.listenTo(value, "change:selected_element", $.proxy(this.update_selected, this));
@@ -173,7 +201,8 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
 
     WidgetManager.register_widget_view("SVGPortView", SVGPortView);
 
-
+    // View of a circuit component (instance)
+    //noinspection JSLint
     var SVGComponentView = ContainerView.extend({
         render: function () {
 
@@ -186,13 +215,13 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 .style("cursor", "move");
 
 
-
             this.svg_inner = this.svg.append("g")
                 .attr("class", "component_body");
 
             this.svg_ports = this.svg.append("g")
                 .attr("class", "component_ports");
 
+            //noinspection JSLint
             this.svg.call(d3.behavior.drag()
                 .on("dragstart", function () {
 //                    /*console.log*/(d3.select(d3.event.sourceEvent.srcElement).attr("class"));
@@ -220,6 +249,7 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
             if (circuit !== null) {
                 this.listenTo(this.model.get("_circuit"), "change:selected_element", $.proxy(this.update_selected, this));
             } else {
+                //noinspection JSLint
                 this.model.on("change:_circuit", function (model, value) {
                     if (value) {
                         this.listenTo(value, "change:selected_element", $.proxy(this.update_selected, this));
@@ -227,7 +257,7 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 }, this);
             }
 
-            this.model.on("change:ports", function (model, value, options) {
+            this.model.on("change:ports", function (model, value) {
                 this.update_children(model.previous("ports"), value, this.$el.find("g.component_ports"));
             }, this);
 
@@ -235,7 +265,8 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
         },
 
         update_selected: function (cmodel, smodel) {
-            var selected = this.model ===  smodel,
+            // update colors if selected
+            var selected = this.model === smodel,
                 color;
             if (selected) {
                 color = this.model.get("_inner_color_selected");
@@ -248,83 +279,75 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
         },
 
         update: function () {
-
             var x = this.model.get("_x"),
                 y = this.model.get("_y"),
                 r = this.model.get("_r"),
                 x_label = this.model.get("_x_label"),
                 y_label = this.model.get("_y_label"),
-                selected = selectedq(this.model),
-                inner_color = this.model.get("_inner_color"),
-                inner_color_selected = this.model.get("_inner_color_selected"),
+                color = this.model.get("_inner_color"),
                 label_color = this.model.get("_label_color"),
                 name = this.model.get("name"),
                 inner_svg = this.model.get("_inner_svg"),
-                color;
+                ctype_name = this.model.get("ctype").get("name");
 
-
-            if (selected) {
-                color = inner_color_selected;
-            } else {
-                color = inner_color;
-            }
 
             this.svg.attr("transform", "translate(" + x + ", " + y + ")");
 
-            if (this.model.hasChanged("_r")
-                    || this.model.hasChanged("_inner_color")
-                    || this.model.hasChanged("_label_color")
-                    || this.model.hasChanged("_x_label")
-                    || this.model.hasChanged("_y_label")
-                    || this.model.hasChanged("name")
-                    || this.svg_inner.html() === ""
-                    || this.model.hasChanged("_inner_svg")) {
+            // if svg not customized
+            if (inner_svg === "") {
 
+                // make symbol with two concentric circles, the outer one being nearly transparent
                 this.svg_inner.html("");
+                this.svg_inner.append("circle")
+                    .attr("class", "outer")
+                    .attr("cx", 0)
+                    .attr("cy", 0)
+                    .attr("r", r)
+                    .attr("fill", color)
+                    .attr("opacity", ".4")
+                    .attr("stroke", "none");
 
-                if (inner_svg === "") {
-                    var ccirc1 = this.svg_inner.append("circle")
-                        .attr("class", "outer")
-                        .attr("cx", 0)
-                        .attr("cy", 0)
-                        .attr("r", r)
-                        .attr("fill", color)
-                        .attr("opacity", ".4")
-                        .attr("stroke", "none");
-
-                    var ccirc2 = this.svg_inner.append("circle")
-                        .attr("class", "inner")
-                        .attr("cx", 0)
-                        .attr("cy", 0)
-                        .attr("r", r / 2)
-                        .attr("fill", color)
-                        .attr("stroke", "none");
-
-                    var title = this.svg_inner
-                        .append("title")
-                        .text(this.model.get("ctype").get("name"));
-                } else {
-                    this.svg_inner.html(inner_svg);
-                }
-
-                var clabel = this.svg_inner
-                    .append("text")
-                    .attr("class", "component_label")
-                    .attr("x", x_label)
-                    .attr("y", y_label)
-                    .attr("text-anchor", "middle")
-                    .attr("fill", label_color)
-                    .attr("font-face", "sans serif") // TODO make option
-                    .attr("font-size", "14") //TODO make option
-                    .text(name);
+                this.svg_inner.append("circle")
+                    .attr("class", "inner")
+                    .attr("cx", 0)
+                    .attr("cy", 0)
+                    .attr("r", r / 2)
+                    .attr("fill", color)
+                    .attr("stroke", "none");
+            } else {
+                this.svg_inner.html(inner_svg);
             }
 
+            // add tooltip giving the component type
+            this.svg_inner
+                .append("title")
+                .text(ctype_name);
+
+            // add label
+            this.svg_inner
+                .append("text")
+                .attr("class", "component_label")
+                .attr("x", x_label)
+                .attr("y", y_label)
+                .attr("text-anchor", "middle")
+                .attr("fill", label_color)
+                .attr("font-face", "sans serif") // TODO make option
+                .attr("font-size", "14") //TODO make option
+                .text(name);
+
+            // update selected
+            var circuit_model = this.model.get("_circuit");
+            if (circuit_model) {
+                this.update_selected(circuit_model, circuit_model.get("selected_element"));
+            }
         }
 
     });
 
     WidgetManager.register_widget_view("SVGComponentView", SVGComponentView);
 
+    // View of a connection between two ports
+    //noinspection JSLint
     var SVGConnectionView = IPython.DOMWidgetView.extend({
         render: function () {
             var el = document.createElementNS('http://www.w3.org/2000/svg', 'g'),
@@ -336,30 +359,36 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 .attr("pointer-events", "stroke")
                 .style("cursor", "crosshair")
                 .on("click", function () {
+                    // transmit click events to backend
                     that.send("click");
                 });
 
+            // listen for coordinate changes for both the source and target ports/components
             this.init_listener(this.model.get("source"));
             this.init_listener(this.model.get("target"));
 
-//            this.model.on("change:source", function (model, value) {
-//                var ps = model.previous("source");
-//                this.stopListening(ps.get("_parent"));
-//                this.stopListening(ps);
-//                this.init_listener(value);
-//            }, this);
-//
-//            this.model.on("change:target", function (model, value) {
-//                var ps = model.previous("target");
-//                this.stopListening(ps.get("_parent"));
-//                this.stopListening(ps);
-//                this.init_listener(value);
-//            }, this);
+            // if source/target port is changed, update event listeners to new port model
+            this.model.on("change:source", function (model, value) {
+                var ps = model.previous("source");
+                this.stopListening(ps.get("_parent"));
+                this.stopListening(ps);
+                this.init_listener(value);
+            }, this);
+            this.model.on("change:target", function (model, value) {
+                var ps = model.previous("target");
+                this.stopListening(ps.get("_parent"));
+                this.stopListening(ps);
+                this.init_listener(value);
+            }, this);
 
+            // register event listener for the selected element of the overall circuit
             var circuit = this.model.get("_circuit");
+
+            // handle both the case where the _circuit trait is already set and where it still needs to be set
             if (circuit !== null) {
                 this.listenTo(this.model.get("_circuit"), "change:selected_element", $.proxy(this.update_selected, this));
             } else {
+                //noinspection JSLint
                 this.model.on("change:_circuit", function (model, value) {
                     if (value) {
                         this.listenTo(value, "change:selected_element", $.proxy(this.update_selected, this));
@@ -368,21 +397,18 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
             }
 
 
-
             var color = this.model.get("_color");
 
-            var mouseover_paths = this.svg
-                .append("path")
+            // mouseover paths
+            this.svg.append("path")
                 .attr("class", "invis")
                 .attr("stroke", color)
                 .attr("stroke-width", "20")
                 .attr("opacity", 0)
                 .attr("fill", "none");
 
-
-
-            var connection_paths = this.svg
-                .append("path")
+            // visible connection
+            this.svg.append("path")
                 .attr("class", "vis")
                 .attr("stroke", color)
                 .attr("stroke-width", "4")
@@ -418,12 +444,14 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
         },
 
         init_listener: function (pmodel) {
-//            console.log("test?");
             this.listenTo(pmodel, "change", $.proxy(this.update, this));
             this.listenTo(pmodel.get("_parent"), "change", $.proxy(this.update, this));
         },
 
         update_selected: function (cmodel, value) {
+            // check if this connection is the selected element
+            // and if so, change color
+
             var selected = value === this.model,
                 color;
 
@@ -438,11 +466,9 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
         update: function () {
 
             var cs = this.get_coords(this.model.get("source")),
-                ct = this.get_coords(this.model.get("target")),
-                color;
+                ct = this.get_coords(this.model.get("target"));
 
-
-
+            // redraw cubic bezier between ports with control points
             this.svg.selectAll("path")
                 .attr("d", String.format(
                     "M {0} {1} C {2} {3} {4} {5} {6} {7}",
@@ -461,14 +487,13 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
 
     WidgetManager.register_widget_view("SVGConnectionView", SVGConnectionView);
 
+
+    // View of the whole circuit editor pane
     var SVGCircuitView = ContainerView.extend({
         render: function () {
 
             var container = d3.select(this.el),
                 that = this;
-
-//            this.model.set("lock_svg_data", false);
-
 
             this.svg = container.append("svg")
                 .attr("width", this.model.get("width"))
@@ -477,70 +502,74 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 .attr("version", "1.1")
                 .attr("xmlns", "http://www.w3.org/2000/svg");
 
+
+            // Set up panning and zooming behavior
             this.zoom = d3.behavior.zoom()
-                .on("zoomstart", function () {
-//                    if (that.model.get("lock_svg_data")===false) {
-//                        that.model.set("lock_svg_data", that.cid);
-//                    }
-                })
-                .on("zoom", function () { // TODO add zoom capabilities and model interaction
+                .on("zoom", function () {
+                    var trans = d3.event.translate,
+                        scale = d3.event.scale;
 
-                    var trans, scale;
-
-//                    if (that.model.get("lock_svg_data") === that.cid) {
-                    trans = d3.event.translate;
-                    scale = d3.event.scale;
-
+                    // update transformation
                     that.svg_main.attr("transform",
-                        "translate(" + trans + ")" +
+                            "translate(" + trans + ")" +
                             "scale(" + scale + ")");
+
+                    // during zoom only update front-end backbone model
                     that.model.set("zoom", [trans[0], trans[1], scale]);
-//                    }
 
                 })
                 .on("zoomend", function () {
+                    // after zoom initiate synchronization with python backend
                     that.touch();
-//                    that.model("lock_svg_data", false);
                 });
+
+            // limit zoom factors
             this.zoom.scaleExtent([0.25, 2.0]);
 
+            // set up group to capture zoom events
             this.svg_zoom = this.svg.append("g")
                 .attr("class", "zoom_area")
                 .attr("pointer-events", "all")
                 .on("click.deselect", function () {
-//                    console.log("DESELECT");
+                    // also capture single click events for element deselection
                     that.send("click");
                 })
                 .call(this.zoom);
 
+            // add white background rectangle to zoom-capture group
             this.svg_zoom.append("rect")
-                .attr("width", 10000)
-                .attr("height", 10000)
-                .attr("visibility", "hidden");
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("fill", "white");
 
-
+            // add zoomable main container for all visual elements
             this.svg_main = this.svg.append("g")
                 .attr("pointer-events", "all")
                 .attr("class", "main");
 
+            // update with current zoom parameters
             var z = this.model.get("zoom");
             this.svg_main
                 .attr("transform",
                     "translate(" + z.slice(0, 2) + ") scale(" + z[2] + ")");
+
+            // update d3 zoom object with params from backbone model
             this.zoom.translate(z.slice(0, 2));
             this.zoom.scale(z[2]);
 
-
-
+            // container for connections
             this.svg_connections = this.svg_main.append("g")
                 .attr("class", "connections");
 
+            // container for external ports
             this.svg_ports = this.svg_main.append("g")
                 .attr("class", "ports");
 
+            // container for component instances
             this.svg_components = this.svg_main.append("g")
                 .attr("class", "components");
 
+            // draw external port background rectangle
             this.svg_ports.append("rect")
                 .attr("width", this.model.get("width") * 0.9)
                 .attr("x", this.model.get("width") * 0.05)
@@ -551,22 +580,21 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 .attr("opacity", 0.4)
                 .attr("stroke", "none");
 
+            // initialize components, ports and connections
             this.update_children([], this.model.get("component_instances"), this.$el.find("g.components"));
             this.update_children([], this.model.get("ports"), this.$el.find("g.ports"));
             this.update_children([], this.model.get("connections"), this.$el.find("g.connections"));
 
-
-            this.model.on("change:component_instances", function (model, value, options) {
+            // assure that connections, external ports and instances are always synchronized with backbone model
+            this.model.on("change:component_instances", function (model, value) {
                 this.update_children(model.previous("component_instances"), value, this.$el.find("g.components"));
             }, this);
-            this.model.on("change:ports", function (model, value, options) {
+            this.model.on("change:ports", function (model, value) {
                 this.update_children(model.previous("ports"), value, this.$el.find("g.ports"));
             }, this);
-            this.model.on("change:connections", function (model, value, options) {
-//                console.log("YES", model, value, model.previous("connections"));
+            this.model.on("change:connections", function (model, value) {
                 this.update_children(model.previous("connections"), value, this.$el.find("g.connections"));
             }, this);
-
 
             this.update();
 
@@ -574,10 +602,10 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
 
 
         update: function () {
-            var z;
 
+            // update pan/zoom
             if (this.model.hasChanged("zoom")) {
-                z = this.model.get("zoom");
+                var z = this.model.get("zoom");
                 this.svg_main
                     .attr("transform",
                         "translate(" + z.slice(0, 2) + ") scale(" + z[2] + ")");
@@ -585,6 +613,7 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 this.zoom.scale(z[2]);
             }
 
+            // update width/height
             if (this.model.hasChanged("width")
                     || this.model.hasChanged("height")) {
                 this.svg
@@ -593,20 +622,11 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
                 this.svg_ports.select("rect.dock")
                     .attr("width", this.model.get("width") * 0.9)
                     .attr("x", this.model.get("width") * 0.05);
-
             }
-
-
-
-
-//            if (!this.model.get("lock_svg_data")) {
-//                this.model.set("_svg_data", this.$el.html());
-//                this.touch();
-//            }
-
         },
 
         on_msg: function (content) {
+            // handle request for capturing current svg
             if (content === "capture_svg") {
                 this.send({
                     type: "captured_svg",
@@ -619,19 +639,22 @@ require(["//cdnjs.cloudflare.com/ajax/libs/d3/3.4.9/d3.min.js", "widgets/js/widg
 
     WidgetManager.register_widget_view("SVGCircuitView", SVGCircuitView);
 
+    // View of the Circuit Builder (slightly modified version of
+    // IPython's PopupView, which allows for a wider view area.
+    //noinspection JSLint
+    var CircuitBuilderView = WidgetManager._view_types.PopupView.extend({
+        show: function () {
+            //noinspection JSLint
+            CircuitBuilderView.__super__.show.apply(this);
+            if (this.popped_out) {
+                this.$window.css("width", this.model.get("circuit").get("width") + "px");
+                this.$window.css("left", Math.max(0, (($('body').outerWidth() - this.$window.outerWidth()) / 2) +
+                    $(window).scrollLeft()) + "px");
 
-    var CircuitBuilderView = WidgetManager._view_types["PopupView"].extend({
-            show: function () {
-                CircuitBuilderView.__super__.show.apply(this);
-                if (this.popped_out) {
-                    this.$window.css("width", this.model.get("circuit").get("width") + "px");
-                    this.$window.css("left", Math.max(0, (($('body').outerWidth() - this.$window.outerWidth()) / 2) +
-                        $(window).scrollLeft()) + "px");
-
-                } else {
-                    this.$window.css("width", "");
-                }
+            } else {
+                this.$window.css("width", "");
             }
+        }
 
 
     });
